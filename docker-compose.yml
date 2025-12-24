@@ -1,0 +1,102 @@
+version: "3.8"
+
+services:
+  # MinIO - S3-compatible object storage
+  minio:
+    image: minio/minio:latest
+    container_name: arxiv-minio
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # MinIO Client - Initialize buckets
+  minio-init:
+    image: minio/mc:latest
+    container_name: arxiv-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      mc mb myminio/raw-data --ignore-existing;
+      mc mb myminio/processed-data --ignore-existing;
+      mc mb myminio/curated-data --ignore-existing;
+      mc mb myminio/models --ignore-existing;
+      mc anonymous set download myminio/models;
+      exit 0;
+      "
+
+  # Apache Spark Master
+  spark-master:
+    image: bitnami/spark:3.5
+    container_name: arxiv-spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "8080:8080"   # Spark Master Web UI
+      - "7077:7077"   # Spark Master Port
+    volumes:
+      - ./src:/opt/bitnami/spark/jobs
+      - spark_data:/opt/bitnami/spark/data
+
+  # Apache Spark Worker
+  spark-worker:
+    image: bitnami/spark:3.5
+    container_name: arxiv-spark-worker
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "8081:8081"   # Spark Worker Web UI
+    volumes:
+      - ./src:/opt/bitnami/spark/jobs
+      - spark_data:/opt/bitnami/spark/data
+
+  # JupyterLab for exploration
+  jupyter:
+    image: jupyter/pyspark-notebook:latest
+    container_name: arxiv-jupyter
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - GRANT_SUDO=yes
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./src:/home/jovyan/src
+      - ./data:/home/jovyan/data
+    command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''
+
+volumes:
+  minio_data:
+    driver: local
+  spark_data:
+    driver: local
+
+networks:
+  default:
+    name: arxiv-llm-network

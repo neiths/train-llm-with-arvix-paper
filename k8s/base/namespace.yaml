@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arxiv-llm
+  labels:
+    app: arxiv-llm-pipeline
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: arxiv-llm-config
+  namespace: arxiv-llm
+data:
+  ENVIRONMENT: "production"
+  MINIO_ENDPOINT: "minio.arxiv-llm.svc.cluster.local:9000"
+  MINIO_SECURE: "false"
+  BUCKET_RAW: "raw-data"
+  BUCKET_PROCESSED: "processed-data"
+  BUCKET_CURATED: "curated-data"
+  BUCKET_MODELS: "models"
+  ARXIV_RATE_LIMIT: "3.0"
+  ARXIV_CATEGORIES: "cs.LG,cs.CL,cs.AI"
+  SPARK_MASTER: "spark://spark-master.arxiv-llm.svc.cluster.local:7077"
+  VOCAB_SIZE: "32000"
+  MAX_SEQ_LENGTH: "2048"
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "json"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: arxiv-llm-secrets
+  namespace: arxiv-llm
+type: Opaque
+stringData:
+  MINIO_ACCESS_KEY: "minioadmin"
+  MINIO_SECRET_KEY: "minioadmin"
+  WANDB_API_KEY: ""

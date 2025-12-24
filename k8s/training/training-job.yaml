@@ -1,0 +1,111 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: training-job
+  namespace: arxiv-llm
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: training-job
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: trainer
+          image: arxiv-llm-trainer:latest
+          command:
+            - python
+            - -m
+            - src.cli
+            - train
+            - start
+            - --data
+            - s3a://curated-data/tokenized
+            - --output
+            - s3a://models/checkpoints
+            - --epochs
+            - "3"
+            - --batch-size
+            - "8"
+          envFrom:
+            - configMapRef:
+                name: arxiv-llm-config
+            - secretRef:
+                name: arxiv-llm-secrets
+          resources:
+            requests:
+              memory: "16Gi"
+              cpu: "4"
+              nvidia.com/gpu: "1"
+            limits:
+              memory: "32Gi"
+              cpu: "8"
+              nvidia.com/gpu: "1"
+          volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: distributed-training-job
+  namespace: arxiv-llm
+spec:
+  parallelism: 4
+  completions: 4
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: distributed-training
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: trainer
+          image: arxiv-llm-trainer:latest
+          command:
+            - torchrun
+            - --nproc_per_node=1
+            - --nnodes=4
+            - --node_rank=$(JOB_COMPLETION_INDEX)
+            - --master_addr=distributed-training-0
+            - --master_port=29500
+            - -m
+            - src.training.distributed
+          env:
+            - name: JOB_COMPLETION_INDEX
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']
+          envFrom:
+            - configMapRef:
+                name: arxiv-llm-config
+            - secretRef:
+                name: arxiv-llm-secrets
+          resources:
+            requests:
+              nvidia.com/gpu: "1"
+            limits:
+              nvidia.com/gpu: "1"
+          volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
