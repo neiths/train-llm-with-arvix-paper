@@ -1,4 +1,5 @@
 """Application configuration using pydantic-settings."""
+from functools import cached_property
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -22,8 +23,13 @@ class Settings(BaseSettings):
     minio_secret_key: str = "minioadmin"
     minio_secure: bool = False
     
-    # arXiv configuration
-    arxiv_categories: list[str] = ["cs.LG", "cs.CL", "cs.AI"]
+    # arXiv configuration (comma-separated string from env)
+    arxiv_categories_str: str = "cs.LG,cs.CL,cs.AI"
+    
+    @cached_property
+    def arxiv_categories(self) -> list[str]:
+        """Parse comma-separated categories string to list."""
+        return [cat.strip() for cat in self.arxiv_categories_str.split(",") if cat.strip()]
     
     # Tokenization
     vocab_size: int = 32000
