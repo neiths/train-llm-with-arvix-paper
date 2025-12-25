@@ -1,119 +1,42 @@
 [project]
-name = "train-llm-arxiv"
+name = "arxiv-llm-pipeline"
 version = "0.1.0"
-description = "End-to-end ML pipeline for training LLMs with arXiv research papers"
-readme = "README.md"
+description = "LLM Training Pipeline with arXiv Data"
 requires-python = ">=3.10"
-license = { text = "MIT" }
-authors = [
-    { name = "Thienhb", email = "thienhb@example.com" }
-]
-keywords = ["llm", "arxiv", "machine-learning", "nlp", "spark"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
-]
-
 dependencies = [
-    # Data Collection
-    "arxiv>=2.1.0",
-    "scrapy>=2.11.0",
-    "aiohttp>=3.9.0",
-    "aiofiles>=23.2.0",
+    # Core
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    
+    # CLI
+    "click>=8.0",
+    "rich>=13.0",
+    
+    # arXiv collection
+    "arxiv>=2.0",
+    "requests>=2.28",
+    "aiohttp>=3.8",
+    
+    # PDF parsing
+    "PyMuPDF>=1.23",
     
     # Storage
-    "minio>=7.2.0",
-    "boto3>=1.34.0",
-    "pyarrow>=14.0.0",
+    "minio>=7.2",
     
-    # Data Processing
-    "pyspark>=3.5.0",
-    "pandas>=2.1.0",
-    "numpy>=1.26.0",
-    
-    # NLP
-    "nltk>=3.8.0",
-    "spacy>=3.7.0",
-    "langdetect>=1.0.9",
-    "ftfy>=6.1.0",
-    "regex>=2023.10.0",
+    # Processing (add later in Phase 4)
+    # "pyspark>=3.5",
     
     # Tokenization
     "sentencepiece>=0.1.99",
-    "tokenizers>=0.15.0",
     
-    # ML Training
-    "torch>=2.1.0",
-    "transformers>=4.36.0",
-    "datasets>=2.15.0",
-    "accelerate>=0.25.0",
-    "wandb>=0.16.0",
-    
-    # Configuration & CLI
-    "pydantic>=2.5.0",
-    "pydantic-settings>=2.1.0",
-    "click>=8.1.0",
-    "rich>=13.7.0",
-    "python-dotenv>=1.0.0",
-    
-    # Utilities
-    "tqdm>=4.66.0",
-    "structlog>=23.2.0",
-    "tenacity>=8.2.0",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.1.0",
-    "black>=23.12.0",
-    "ruff>=0.1.0",
-    "mypy>=1.7.0",
-    "pre-commit>=3.6.0",
-]
-
-gpu = [
-    # For GPU support, install PyTorch with CUDA separately:
-    # pip install torch --index-url https://download.pytorch.org/whl/cu121
-    "torch>=2.1.0",
+    # Training
+    "torch>=2.0",
+    "wandb>=0.16",
 ]
 
 [project.scripts]
-arxiv-llm = "src.cli:main"
-
-[project.urls]
-Homepage = "https://github.com/thienhb/train-llm-with-arxiv-data"
-Repository = "https://github.com/thienhb/train-llm-with-arxiv-data"
+arxiv-llm = "src.cli:cli"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src"]
-
-[tool.black]
-line-length = 100
-target-version = ['py310', 'py311']
-include = '\.pyi?$'
-
-[tool.ruff]
-line-length = 100
-select = ["E", "F", "I", "N", "W", "UP"]
-ignore = ["E501"]
-
-[tool.mypy]
-python_version = "3.10"
-warn_return_any = true
-warn_unused_ignores = true
-disallow_untyped_defs = true
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
-addopts = "-v --tb=short"
