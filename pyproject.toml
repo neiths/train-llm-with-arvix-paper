@@ -32,6 +32,9 @@ dependencies = [
     # Training
     "torch>=2.0",
     "wandb>=0.16",
+
+    # Spark
+    "pyspark>=3.5",
 ]
 
 [project.scripts]
