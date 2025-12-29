@@ -16,10 +16,9 @@ class ProcessingPipeline:
     
     def __init__(self, spark: Optional[SparkSession] = None):
         """Initialize pipeline with shared Spark session."""
+        # Don't specify master here - let spark-submit handle it
         self.spark = spark or SparkSession.builder \
             .appName("ProcessingPipeline") \
-            .master("local[*]") \
-            .config("spark.driver.memory", "4g") \
             .getOrCreate()
     
     def run(self, input_path: Path, output_path: Path) -> bool:
@@ -27,8 +26,10 @@ class ProcessingPipeline:
         try:
             logger.info(f"Starting pipeline: {input_path} -> {output_path}")
             
-            # Read raw text files
-            df = self.spark.read.text(str(input_path / "*.txt"))
+            # Read raw text files - use string path with glob
+            input_glob = str(input_path) + "/*.txt"
+            logger.info(f"Reading from: {input_glob}")
+            df = self.spark.read.text(input_glob)
             logger.info(f"Loaded {df.count()} documents")
             
             # Step 1: Normalization
